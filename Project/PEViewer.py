@@ -708,18 +708,145 @@ def section_hader_parser(data,offset,num,stdout=1):
     return section_header
 
 def section_list(data):
-    print("Section list called")
+    optional=nt_optional_header(data,e_lfanew+24,0)
+    value=["" for i in range(60)]
+    #공식 : RAW(Offset) = RVA - Virtual Address + PointerToRawDat
+    value[30] = "EXPORT Table"
+    value[32] = "IMPORT Table"
+    value[34] = "RESOURCE Table"
+    value[36] = "EXCEPTION Table"
+    value[38] = "CERTIFICATE Table"
+    value[40] = "BASE RELOCATION Table"
+    value[42] = "DEBUG Table"
+    value[44] = "Architecture Specific Data"
+    value[46] = "GLOBAL POINTER Table"
+    value[48] = "TLS Table"
+    value[50] = "LOAD CONFIGURATION Table"
+    value[52] = "BOUND IMPORT Table"
+    value[54] = "IMPORT Adress Table"
+    value[56] = "DELAY IMPORT Descriptors"
+    value[58] = "CLI Header"
+    so=[] #각 섹션의 시작 위치를 저장함
+    offset_size_dic={}
+
+    print("Section list & HEX_VIEW")
+    for i in range(len(section_header_name)):
+        section_header = struct.unpack_from("8s7I2HI", data, section_header_offset+(i*40))
+        so.append(section_header[4])
     for i, name in enumerate(section_header_name):
         section_header = struct.unpack_from("8s7I2HI", data, section_header_offset+(i*40))
         name=f'{section_header[0]}'.replace("b","").replace("\\x00",'').replace("'",'')
         print(f'{i+1}.',"Section",name)
-        # print(name,"",section_header)
+        for j in range(30, 58, 2):
+            tmp_offset=optional[j]-section_header[2]+section_header[4]
+            if i != len(section_header_name)-1:
+                if so[i]<=tmp_offset<so[i+1]:
+                    if optional[j]!=0:
+                        offset_size_dic[tmp_offset]=[value[j],optional[j+1]]
+                        # sec_entry_name(offset_size_dic, tmp_offset)
+                        # sec_entry_name(value[j])
+                        # print(name+"섹션 엔트리입니다.:", value[j])
+                        # print(offset_size_dic.keys(),offset_size_dic.get(tmp_offset))
+                        # print(offset_size_dic,offset_size_dic.get(tmp_offset)[0])
+                        pass
+            else:
+                if so[i]<=tmp_offset:
+                    if optional[j]!=0:
+                        offset_size_dic[tmp_offset]=optional[j+1]
+                        # sec_entry_name(offset_size_dic, tmp_offset)
+                        # print(name+"섹션 엔트리입니다.",value[j])
+                        pass
+            
+        
+    # print(name,"",section_header)
+    # print(raw_offset,"\n",table_size)
     c=int(input(">>"))
     if 0<c<=len(section_header_name):
         section_header = struct.unpack_from("8s7I2HI", data, section_header_offset+((c-1)*40))
         section_offset=section_header[4]
         size=section_header[3] #Pointer to Raw Data
         HEX_EDIT_MODE(data,section_offset, size)
+
+# def sec_entry_name(sec_dic, offset):
+#     entry_name = sec_dic[offset][0]
+#     size = sec_dic[offset][1]
+#     print(f"{entry_name} (Size: {size} bytes)")
+    
+#     if entry_name == "EXPORT Table":
+#         export_directory_parser(data, offset, size)
+#     elif entry_name == "IMPORT Table":
+#         import_directory_parser(data, offset, size)
+#     # 다른 엔트리에 대한 파서 추가 가능
+#     else:
+#         print(f"Parser for {entry_name}")
+
+# def export_directory_parser(data, offset, size):
+#     print("Parsing EXPORT Directory...")
+
+#     export_directory_format = [
+#         "I",  # Characteristics
+#         "I",  # TimeDateStamp
+#         "H",  # MajorVersion
+#         "H",  # MinorVersion
+#         "I",  # Name
+#         "I",  # Base
+#         "I",  # NumberOfFunctions
+#         "I",  # NumberOfNames
+#         "I",  # AddressOfFunctions
+#         "I",  # AddressOfNames
+#         "I",  # AddressOfNameOrdinals
+#     ]
+#     export_directory = struct.unpack_from("<" + "".join(export_directory_format), data, offset)
+#     descriptions = [
+#         "Characteristics",
+#         "TimeDateStamp",
+#         "MajorVersion",
+#         "MinorVersion",
+#         "Name",
+#         "Base",
+#         "NumberOfFunctions",
+#         "NumberOfNames",
+#         "AddressOfFunctions",
+#         "AddressOfNames",
+#         "AddressOfNameOrdinals",
+#     ]
+
+#     for i, (field, description) in enumerate(zip(export_directory, descriptions)):
+#         print(f"{description}: {field}")
+
+# def import_directory_parser(data, offset, size):
+#     print("Parsing IMPORT Directory...")
+
+#     import_directory_format = [
+#         "I",  # OriginalFirstThunk
+#         "I",  # TimeDateStamp
+#         "I",  # ForwarderChain
+#         "I",  # Name
+#         "I",  # FirstThunk
+#     ]
+#     import_directory = struct.unpack_from("<" + "".join(import_directory_format), data, offset)
+#     descriptions = [
+#         "OriginalFirstThunk",
+#         "TimeDateStamp",
+#         "ForwarderChain",
+#         "Name",
+#         "FirstThunk",
+#     ]
+
+#     for i, (field, description) in enumerate(zip(import_directory, descriptions)):
+#         print(f"{description}: {field}")
+
+# def sec_entry_name(sec_dic,offset):
+#     #미완성
+#     sec_entry_parser(offset)
+#     if sec_dic[offset][0]:
+#         print("IMPORT Directory Table")
+#     elif sec_name =="IMPORT Adress Table":
+#         print("IMPORT Adress Table")
+
+def sec_entry_parser():
+    #미완성
+    pass
     
 
 #Main 시작
@@ -753,7 +880,7 @@ try:
             # print("PE-view MOD:\tSECTION_HEADER data = 11")
             # print("PE-view MOD:\tSECTION_HEADER idata = 12")
             # print("PE-view MOD:\tSECTION_HEADER reloc = 13")
-            print("PE-view MOD:\tSECTION list view = ",cnt+9)
+            print("print MOD:\tSECTION list view = ",cnt+9)
             choice=int(input("Enter : 입력>"))
             if choice==1: #IMAGE_DOS_HEADER Hex-Edit
                 HEX_EDIT_MODE(data , 0, 64) #64바이트 고정 크기
